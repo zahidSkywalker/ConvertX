@@ -1,30 +1,20 @@
 """
-Application configuration — environment variables, constants, allowed file types.
-
-Every value has a safe default so the app runs locally with zero config.
-Override via environment variables or .env file in production.
+Application configuration — centralized settings with environment overrides.
 """
 
 import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Load .env file if present (local development only, ignored in production containers)
 load_dotenv()
 
-
-# ─── Environment ───────────────────────────────────────────────────────────────
+# ─── Environment ────────────────────────────────────────────────────────────
 ENVIRONMENT: str = os.getenv("ENVIRONMENT", "production")
 DEBUG: bool = ENVIRONMENT == "development"
-
-
-# ─── Server ────────────────────────────────────────────────────────────────────
 HOST: str = os.getenv("HOST", "0.0.0.0")
 PORT: int = int(os.getenv("PORT", "8000"))
 
-
-# ─── CORS ──────────────────────────────────────────────────────────────────────
-# Comma-separated origins. On Render/Vercel, set this to your frontend domain.
+# ─── CORS ───────────────────────────────────────────────────────────────────
 ALLOWED_ORIGINS: list[str] = [
     origin.strip()
     for origin in os.getenv(
@@ -34,80 +24,87 @@ ALLOWED_ORIGINS: list[str] = [
     if origin.strip()
 ]
 
-
-# ─── File Handling ─────────────────────────────────────────────────────────────
+# ─── File Handling ──────────────────────────────────────────────────────────
 MAX_FILE_SIZE_BYTES: int = int(os.getenv("MAX_FILE_SIZE_MB", "10")) * 1024 * 1024
 MAX_FILE_SIZE_MB: int = MAX_FILE_SIZE_BYTES // (1024 * 1024)
-
 MAX_FILES_PER_REQUEST: int = int(os.getenv("MAX_FILES_PER_REQUEST", "20"))
 
-# Temp directories — all uploaded and converted files live here
 TEMP_DIR: Path = Path(os.getenv("TEMP_DIR", "/tmp/convertx"))
 UPLOAD_DIR: Path = TEMP_DIR / "uploads"
 OUTPUT_DIR: Path = TEMP_DIR / "outputs"
 
-# How long (seconds) before temp files are auto-deleted
-FILE_TTL_SECONDS: int = int(os.getenv("FILE_TTL_SECONDS", "600"))  # 10 minutes
+FILE_TTL_SECONDS: int = int(os.getenv("FILE_TTL_SECONDS", "600"))
+CLEANUP_INTERVAL_SECONDS: int = int(os.getenv("CLEANUP_INTERVAL_SECONDS", "300"))
 
-# How often (seconds) the background cleanup task scans for expired files
-CLEANUP_INTERVAL_SECONDS: int = int(os.getenv("CLEANUP_INTERVAL_SECONDS", "300"))  # 5 minutes
-
-
-# ─── External Tools ────────────────────────────────────────────────────────────
-# Paths to system-installed tools. Override only if they're in a non-standard location.
+# ─── External Tools ─────────────────────────────────────────────────────────
 LIBREOFFICE_PATH: str = os.getenv("LIBREOFFICE_PATH", "libreoffice")
 TESSERACT_PATH: str = os.getenv("TESSERACT_PATH", "tesseract")
 
-
-# ─── Allowed MIME Types & Extensions ───────────────────────────────────────────
+# ─── Allowed MIME Types ─────────────────────────────────────────────────────
 ALLOWED_MIME_TYPES: dict[str, list[str]] = {
-    "application/pdf": [
-        ".pdf",
-    ],
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
-        ".docx",
-    ],
-    "image/jpeg": [
-        ".jpg",
-        ".jpeg",
-    ],
-    "image/png": [
-        ".png",
-    ],
-    "image/webp": [
-        ".webp",
-    ],
+    "application/pdf": [".pdf"],
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": [".pptx"],
+    "image/jpeg": [".jpg", ".jpeg"],
+    "image/png": [".png"],
+    "image/webp": [".webp"],
+    "text/html": [".html", ".htm"],
 }
 
-# Reverse lookup: extension → MIME type (built once at import time)
 EXTENSION_TO_MIME: dict[str, str] = {}
 for _mime, _extensions in ALLOWED_MIME_TYPES.items():
     for _ext in _extensions:
         EXTENSION_TO_MIME[_ext] = _mime
 
-# Which MIME types each conversion tool accepts
+# Map tools to their allowed input MIME types
 TOOL_INPUT_TYPES: dict[str, list[str]] = {
+    # PDF Core
+    "merge-pdf": ["application/pdf"],
+    "split-pdf": ["application/pdf"],
+    "rotate-pdf": ["application/pdf"],
+    "compress-pdf": ["application/pdf"],
+    "watermark-pdf": ["application/pdf"],
+    "add-page-numbers": ["application/pdf"],
+    "organize-pages": ["application/pdf"],
+    "repair-pdf": ["application/pdf"],
+    "pdf-to-image": ["application/pdf"],
+    
+    # PDF Extraction
     "pdf-to-word": ["application/pdf"],
-    "word-to-pdf": [
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    ],
+    "pdf-to-excel": ["application/pdf"],
+    "pdf-to-powerpoint": ["application/pdf"],
+    
+    # Office to PDF
+    "word-to-pdf": ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
+    "excel-to-pdf": ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"],
+    "powerpoint-to-pdf": ["application/vnd.openxmlformats-officedocument.presentationml.presentation"],
+    
+    # Advanced PDF
+    "edit-pdf": ["application/pdf"],
+    "ocr-pdf": ["application/pdf"],
+    
+    # Image Tools
     "image-to-pdf": ["image/jpeg", "image/png", "image/webp"],
     "image-to-excel": ["image/jpeg", "image/png", "image/webp"],
+    
+    # HTML
+    "html-to-pdf": ["text/html"],
 }
 
-
-# ─── Magic Bytes — first bytes of each file type for server-side verification ──
+# ─── Magic Bytes ────────────────────────────────────────────────────────────
 MAGIC_BYTE_SIGNATURES: dict[str, bytes] = {
     "application/pdf": b"%PDF",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document": b"PK\x03\x04",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": b"PK\x03\x04",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": b"PK\x03\x04",
     "image/jpeg": b"\xff\xd8\xff",
     "image/png": b"\x89PNG\r\n\x1a\n",
     "image/webp": b"RIFF",
+    "text/html": b"<!DO",  # Checks for <!DOCTYPE or <html
 }
 
-
-# ─── Create directories on import ─────────────────────────────────────────────
-# Uses exist_ok=True so this is safe across multiple worker processes.
+# ─── Directory Init ─────────────────────────────────────────────────────────
 TEMP_DIR.mkdir(parents=True, exist_ok=True)
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
