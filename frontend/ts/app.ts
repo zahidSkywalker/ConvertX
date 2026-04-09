@@ -69,7 +69,8 @@ export class App {
     this.renderToolOptions(tool);
 
     this.cleanupUploadZone?.(); 
-    const uploadZone = document.getElementById('upload-zone');
+    // FIXED: Added 'as HTMLElement' so TypeScript knows .style exists
+    const uploadZone = document.getElementById('upload-zone') as HTMLElement;
     if (uploadZone) uploadZone.style.display = tool.isJsonBody ? 'none' : 'block';
     
     if (!tool.isJsonBody) {
