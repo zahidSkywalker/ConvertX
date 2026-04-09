@@ -18,7 +18,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   
   <!-- Vite injects the compiled CSS here -->
-  <link rel="stylesheet" href="/src/style.css" />
+  <link rel="stylesheet" href="./src/style.css" />
 </head>
 <body>
   <div id="app">
@@ -68,7 +68,7 @@
         </div>
 
         <!-- Dynamic Options Form (Rotate, Watermark, etc.) -->
-        <div id="options-container" class="glass card options-card" style="display: none;">
+        <div id="options-container" class="glass card options-card hidden">
           <!-- Populated by ts/app.ts -->
         </div>
 
@@ -82,18 +82,18 @@
         </div>
 
         <!-- File Preview List -->
-        <ul id="file-list" class="file-list" style="display: none;"></ul>
+        <ul id="file-list" class="file-list hidden"></ul>
 
         <!-- Actions -->
         <div class="workspace-actions">
           <button id="convert-btn" class="btn btn-primary" disabled>
             <span class="btn-text">Convert Now</span>
-            <span class="btn-loader" style="display: none;"></span>
+            <span class="btn-loader hidden"></span>
           </button>
         </div>
 
         <!-- Progress Bar -->
-        <div id="progress-container" class="progress-container" style="display: none;">
+        <div id="progress-container" class="progress-container hidden">
           <div class="progress-bar">
             <div id="progress-fill" class="progress-fill"></div>
           </div>
@@ -101,7 +101,7 @@
         </div>
 
         <!-- Error Display -->
-        <div id="error-container" class="error-card glass" style="display: none;">
+        <div id="error-container" class="error-card glass hidden">
           <span class="error-icon">⚠️</span>
           <p id="error-text" class="error-text"></p>
         </div>
@@ -136,6 +136,6 @@
   </div>
 
   <!-- Vite injects the compiled TS here -->
-  <script type="module" src="/src/main.ts"></script>
+  <script type="module" src="./src/main.ts"></script>
 </body>
 </html>
