@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ConvertX Icon Generator</title>
+  <style>body{font-family:sans-serif;text-align:center;padding:2rem}canvas{display:none}button{padding:1rem 2rem;font-size:1.2rem;background:#3b82f6;color:white;border:none;border-radius:8px;cursor:pointer}</style>
+</head>
+<body>
+  <h2>ConvertX PWA Icon Generator</h2>
+  <p>Click the button to generate and download all 8 required icons.</p>
+  <button onclick="generateIcons()">Generate Icons</button>
+  
+  <canvas id="c"></canvas>
+
+  <script>
+    function generateIcons() {
+      const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
+      const canvas = document.getElementById('c');
+      const ctx = canvas.getContext('2d');
+
+      sizes.forEach(size => {
+        canvas.width = size;
+        canvas.height = size;
+        
+        // Background
+        const gradient = ctx.createLinearGradient(0, 0, size, size);
+        gradient.addColorStop(0, '#2563eb');
+        gradient.addColorStop(1, '#7c3aed');
+        ctx.fillStyle = gradient;
+        
+        // Rounded rect
+        const r = size * 0.2;
+        ctx.beginPath();
+        ctx.moveTo(r, 0);
+        ctx.lineTo(size - r, 0);
+        ctx.quadraticCurveTo(size, 0, size, r);
+        ctx.lineTo(size, size - r);
+        ctx.quadraticCurveTo(size, size, size - r, size);
+        ctx.lineTo(r, size);
+        ctx.quadraticCurveTo(0, size, 0, size - r);
+        ctx.lineTo(0, r);
+        ctx.quadraticCurveTo(0, 0, r, 0);
+        ctx.closePath();
+        ctx.fill();
+
+        // Lightning Bolt Icon (⚡)
+        ctx.fillStyle = 'white';
+        ctx.font = `bold ${size * 0.6}px system-ui`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('⚡', size / 2, size / 2 + size * 0.05);
+
+        // Download
+        const link = document.createElement('a');
+        link.download = `icon-${size}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      });
+    }
+  </script>
+</body>
+</html>
