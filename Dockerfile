@@ -1,5 +1,4 @@
 # ─── Backend Dockerfile for Render / Railway ──────────────────────────────
-# Installs Python dependencies, LibreOffice, Tesseract, and WeasyPrint.
 
 FROM python:3.11-slim AS builder
 
@@ -29,8 +28,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy Python packages from builder
-COPY --from=installer /install /usr/local
+# Copy Python packages from builder (FIXED: was --from=installer)
+COPY --from=builder /install /usr/local
 
 WORKDIR /app
 
