@@ -225,15 +225,17 @@ export class App {
     if (container) container.style.display = 'none';
   }
 
-  private resetWorkspaceUI(): void {
+    private resetWorkspaceUI(): void {
     this.hideError();
     this.updateProgress(0);
-    const progressContainer = document.getElementById('progress-container') as HTMLElement;
-    if (progressContainer) progressContainer.style.display = 'none';
     
-    const fileList = document.getElementById('file-list') as HTMLElement;
-    if (fileList) fileList.style.display = 'none';
+    // Using setAttribute to bypass strict TS Element type issues on Vercel
+    const pc = document.getElementById('progress-container');
+    if (pc) pc.setAttribute('style', 'display: none');
     
+    const fl = document.getElementById('file-list');
+    if (fl) fl.setAttribute('style', 'display: none');
+
     this.updateConvertButton();
   }
 
