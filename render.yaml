@@ -1,0 +1,17 @@
+# ─── Render Deployment Configuration ──────────────────────────────────────
+# Docs: https://docs.render.com/yaml-spec
+
+services:
+  - type: web
+    name: convertx-backend
+    runtime: docker
+    plan: free # Upgrade to standard if 512MB RAM is insufficient for large PDFs
+    region: frankfurt # or oregon, singapore, etc.
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: ENVIRONMENT
+        value: production
+      - key: ALLOWED_ORIGINS
+        sync: false # Manually set this in the Render dashboard to your Vercel URL!
+        # Example value: https://convertx-frontend.vercel.app
