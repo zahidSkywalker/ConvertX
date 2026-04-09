@@ -69,9 +69,14 @@ export class App {
     this.renderToolOptions(tool);
 
     this.cleanupUploadZone?.(); 
-    // FIXED: Added 'as HTMLElement' so TypeScript knows .style exists
-    const uploadZone = document.getElementById('upload-zone') as HTMLElement;
-    if (uploadZone) uploadZone.style.display = tool.isJsonBody ? 'none' : 'block';
+    const uploadZone = document.getElementById('upload-zone');
+    if (uploadZone) {
+      if (tool.isJsonBody) {
+        uploadZone.classList.add('hidden');
+      } else {
+        uploadZone.classList.remove('hidden');
+      }
+    }
     
     if (!tool.isJsonBody) {
       this.cleanupUploadZone = initUploadZone(tool, {
@@ -167,7 +172,6 @@ export class App {
       let statsHtml = `<div class="stat-item"><strong>Filename:</strong> ${result.filename}</div>`;
       statsHtml += `<div class="stat-item"><strong>Size:</strong> ${result.size_human}</div>`;
 
-      // Double cast to satisfy strict TypeScript
       const res = result as unknown as Record<string, unknown>;
       
       if ('reduction_percent' in res) statsHtml += `<div class="stat-item"><strong>Reduced by:</strong> ${res.reduction_percent}%</div>`;
@@ -184,18 +188,23 @@ export class App {
     this.navigate('/result');
   }
 
-  // ─── UI State Helpers ─────────────────────────────────────────────────
-
   private setConvertingUI(isConverting: boolean): void {
     const btn = document.getElementById('convert-btn') as HTMLButtonElement;
     const text = btn?.querySelector('.btn-text');
     const loader = btn?.querySelector('.btn-loader');
-    const progress = document.getElementById('progress-container') as HTMLElement;
+    const progress = document.getElementById('progress-container');
     
     if (btn) btn.disabled = isConverting;
-    if (text) text.style.display = isConverting ? 'none' : 'inline';
-    if (loader) loader.style.display = isConverting ? 'inline-block' : 'none';
-    if (progress) progress.style.display = isConverting ? 'block' : 'none';
+    
+    if (text) {
+      if (isConverting) text.classList.add('hidden'); else text.classList.remove('hidden');
+    }
+    if (loader) {
+      if (isConverting) loader.classList.remove('hidden'); else loader.classList.add('hidden');
+    }
+    if (progress) {
+      if (isConverting) progress.classList.remove('hidden'); else progress.classList.add('hidden');
+    }
     
     if (!isConverting) this.updateProgress(0);
   }
@@ -212,29 +221,28 @@ export class App {
   }
 
   private showError(message: string): void {
-    const container = document.getElementById('error-container') as HTMLElement;
+    const container = document.getElementById('error-container');
     const text = document.getElementById('error-text');
     if (container && text) {
       text.textContent = message;
-      container.style.display = 'flex';
+      container.classList.remove('hidden');
     }
   }
 
   private hideError(): void {
-    const container = document.getElementById('error-container') as HTMLElement;
-    if (container) container.style.display = 'none';
+    const container = document.getElementById('error-container');
+    if (container) container.classList.add('hidden');
   }
 
-    private resetWorkspaceUI(): void {
+  private resetWorkspaceUI(): void {
     this.hideError();
     this.updateProgress(0);
     
-    // Using setAttribute to bypass strict TS Element type issues on Vercel
     const pc = document.getElementById('progress-container');
-    if (pc) pc.setAttribute('style', 'display: none');
+    if (pc) pc.classList.add('hidden');
     
     const fl = document.getElementById('file-list');
-    if (fl) fl.setAttribute('style', 'display: none');
+    if (fl) fl.classList.add('hidden');
 
     this.updateConvertButton();
   }
@@ -256,8 +264,6 @@ export class App {
     
     return opts;
   }
-
-  // ─── DOM Rendering ────────────────────────────────────────────────────
 
   private renderLandingGrid(): void {
     const container = document.getElementById('tools-container');
@@ -288,11 +294,11 @@ export class App {
     if (!container) return;
 
     if (!tool.options || tool.options.length === 0) {
-      container.style.display = 'none';
+      container.classList.add('hidden');
       return;
     }
 
-    container.style.display = 'block';
+    container.classList.remove('hidden');
     container.innerHTML = tool.options.map(opt => {
       if (opt.type === 'select') {
         const optsHtml = (opt.options || []).map(o => 
@@ -306,8 +312,6 @@ export class App {
       return `<div class="form-group"><label for="opt-${opt.id}">${opt.label}</label><input type="${opt.type}" id="opt-${opt.id}" name="${opt.id}" value="${opt.value}" ${opt.required ? 'required' : ''} /></div>`;
     }).join('');
   }
-
-  // ─── Utilities ────────────────────────────────────────────────────────
 
   private showView(view: AppView): void {
     document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
