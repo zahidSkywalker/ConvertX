@@ -1,6 +1,5 @@
 /**
  * ConvertX Application Shell — Complete Production Version.
- * Orchestrates routing, state, upload, API calls, and UI updates.
  */
 import { TOOLS, CATEGORIES } from './tools';
 import { Tool, AppView, ToolCategory, ConversionResponse, ErrorResponse } from './types';
@@ -9,7 +8,6 @@ import { convert } from './api';
 
 export class App {
   // State
-  private currentView: AppView = 'landing';
   private selectedTool: Tool | null = null;
   private files: File[] = [];
   private isConverting = false;
@@ -57,7 +55,6 @@ export class App {
     this.files = [];
     this.isConverting = false;
     
-    // Update Header
     this.setText('tool-title', tool.name);
     this.setText('tool-desc', tool.description);
     this.setText('tool-icon', tool.icon);
@@ -69,15 +66,11 @@ export class App {
         : `Accepted: ${tool.accept.toUpperCase()}`;
     }
 
-    // Render dynamic options
     this.renderToolOptions(tool);
 
-    // Setup Upload Zone
-    this.cleanupUploadZone?.(); // Remove old listeners
+    this.cleanupUploadZone?.(); 
     const uploadZone = document.getElementById('upload-zone');
-    if (uploadZone) {
-      uploadZone.style.display = tool.isJsonBody ? 'none' : 'block';
-    }
+    if (uploadZone) uploadZone.style.display = tool.isJsonBody ? 'none' : 'block';
     
     if (!tool.isJsonBody) {
       this.cleanupUploadZone = initUploadZone(tool, {
@@ -92,9 +85,9 @@ export class App {
 
   private handleFilesAdded(newFiles: File[]): void {
     if (!this.selectedTool?.multiple) {
-      this.files = [newFiles[0]]; // Replace
+      this.files = [newFiles[0]]; 
     } else {
-      this.files = [...this.files, ...newFiles]; // Append
+      this.files = [...this.files, ...newFiles]; 
     }
     this.hideError();
     renderFileList(this.files, (idx) => this.removeFile(idx));
@@ -117,7 +110,6 @@ export class App {
     }
 
     if (this.selectedTool?.isJsonBody) {
-      // HTML to PDF requires at least the HTML field (validation happens on submit)
       btn.disabled = false;
     } else {
       btn.disabled = this.files.length === 0;
@@ -130,7 +122,6 @@ export class App {
     const tool = this.selectedTool;
     const options = this.getFormOptions(tool);
 
-    // Client-side validation for JSON tools
     if (tool.isJsonBody && !options['html']) {
       this.showError('HTML content cannot be empty.');
       return;
@@ -164,42 +155,27 @@ export class App {
   }
 
   private handleSuccess(result: ConversionResponse): void {
-    // Setup Download Button
     const dlBtn = document.getElementById('download-btn') as HTMLAnchorElement;
     if (dlBtn) {
       dlBtn.href = result.download_url;
       dlBtn.download = result.filename;
     }
 
-    // Render Dynamic Stats
     const statsContainer = document.getElementById('result-stats');
     if (statsContainer) {
       let statsHtml = `<div class="stat-item"><strong>Filename:</strong> ${result.filename}</div>`;
       statsHtml += `<div class="stat-item"><strong>Size:</strong> ${result.size_human}</div>`;
 
-      // Tool-specific stats
-      const res = result as Record<string, unknown>;
-      if ('reduction_percent' in res) {
-        statsHtml += `<div class="stat-item"><strong>Reduced by:</strong> ${res.reduction_percent}%</div>`;
-      }
-      if ('page_count' in res) {
-        statsHtml += `<div class="stat-item"><strong>Pages:</strong> ${res.page_count}</div>`;
-      }
-      if ('tables_found' in res) {
-        statsHtml += `<div class="stat-item"><strong>Tables Found:</strong> ${res.tables_found}</div>`;
-      }
-      if ('rows_extracted' in res) {
-        statsHtml += `<div class="stat-item"><strong>Rows Extracted:</strong> ${res.rows_extracted}</div>`;
-      }
-      if ('slide_count' in res) {
-        statsHtml += `<div class="stat-item"><strong>Slides:</strong> ${res.slide_count}</div>`;
-      }
-      if ('words_detected' in res) {
-        statsHtml += `<div class="stat-item"><strong>Words Detected:</strong> ${res.words_detected}</div>`;
-      }
-      if ('pages_recovered' in res) {
-        statsHtml += `<div class="stat-item"><strong>Pages Recovered:</strong> ${res.pages_recovered}</div>`;
-      }
+      // Double cast to satisfy strict TypeScript
+      const res = result as unknown as Record<string, unknown>;
+      
+      if ('reduction_percent' in res) statsHtml += `<div class="stat-item"><strong>Reduced by:</strong> ${res.reduction_percent}%</div>`;
+      if ('page_count' in res) statsHtml += `<div class="stat-item"><strong>Pages:</strong> ${res.page_count}</div>`;
+      if ('tables_found' in res) statsHtml += `<div class="stat-item"><strong>Tables Found:</strong> ${res.tables_found}</div>`;
+      if ('rows_extracted' in res) statsHtml += `<div class="stat-item"><strong>Rows Extracted:</strong> ${res.rows_extracted}</div>`;
+      if ('slide_count' in res) statsHtml += `<div class="stat-item"><strong>Slides:</strong> ${res.slide_count}</div>`;
+      if ('words_detected' in res) statsHtml += `<div class="stat-item"><strong>Words Detected:</strong> ${res.words_detected}</div>`;
+      if ('pages_recovered' in res) statsHtml += `<div class="stat-item"><strong>Pages Recovered:</strong> ${res.pages_recovered}</div>`;
 
       statsContainer.innerHTML = statsHtml;
     }
@@ -213,16 +189,14 @@ export class App {
     const btn = document.getElementById('convert-btn') as HTMLButtonElement;
     const text = btn?.querySelector('.btn-text');
     const loader = btn?.querySelector('.btn-loader');
-    const progress = document.getElementById('progress-container');
+    const progress = document.getElementById('progress-container') as HTMLElement;
     
     if (btn) btn.disabled = isConverting;
     if (text) text.style.display = isConverting ? 'none' : 'inline';
     if (loader) loader.style.display = isConverting ? 'inline-block' : 'none';
     if (progress) progress.style.display = isConverting ? 'block' : 'none';
     
-    if (!isConverting) {
-      this.updateProgress(0);
-    }
+    if (!isConverting) this.updateProgress(0);
   }
 
   private updateProgress(percent: number): void {
@@ -237,7 +211,7 @@ export class App {
   }
 
   private showError(message: string): void {
-    const container = document.getElementById('error-container');
+    const container = document.getElementById('error-container') as HTMLElement;
     const text = document.getElementById('error-text');
     if (container && text) {
       text.textContent = message;
@@ -246,15 +220,19 @@ export class App {
   }
 
   private hideError(): void {
-    const container = document.getElementById('error-container');
+    const container = document.getElementById('error-container') as HTMLElement;
     if (container) container.style.display = 'none';
   }
 
   private resetWorkspaceUI(): void {
     this.hideError();
     this.updateProgress(0);
-    document.getElementById('progress-container')!.style.display = 'none';
-    document.getElementById('file-list')!.style.display = 'none';
+    const progressContainer = document.getElementById('progress-container') as HTMLElement;
+    if (progressContainer) progressContainer.style.display = 'none';
+    
+    const fileList = document.getElementById('file-list') as HTMLElement;
+    if (fileList) fileList.style.display = 'none';
+    
     this.updateConvertButton();
   }
 
@@ -266,12 +244,8 @@ export class App {
       const el = document.getElementById(`opt-${opt.id}`) as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null;
       if (el) {
         let val: string | number = el.value;
-        // Parse numbers and JSON arrays correctly for the backend
         if (opt.type === 'number') {
           val = parseFloat(val) || 0;
-        }
-        if (opt.id === 'new_order' || opt.id === 'page_numbers') {
-          // Don't parse, send as raw JSON string for FastAPI Form()
         }
         opts[opt.id] = val;
       }
@@ -333,7 +307,6 @@ export class App {
   // ─── Utilities ────────────────────────────────────────────────────────
 
   private showView(view: AppView): void {
-    this.currentView = view;
     document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
     document.getElementById(`${view}-view`)?.classList.add('active');
     window.scrollTo(0, 0);
