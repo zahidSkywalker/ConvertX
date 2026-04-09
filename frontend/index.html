@@ -17,8 +17,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   
-  <!-- Vite injects the compiled CSS here -->
-  <link rel="stylesheet" href="./src/style.css" />
+  <!-- CSS is in the src folder -->
+  <link rel="stylesheet" href="/src/style.css" />
 </head>
 <body>
   <div id="app">
@@ -46,7 +46,6 @@
       </section>
 
       <section id="tools-container" class="container">
-        <!-- Dynamically populated by ts/app.ts based on TOOLS array -->
       </section>
 
       <footer class="footer container">
@@ -67,12 +66,9 @@
           <p id="tool-desc" class="workspace-desc">Tool description</p>
         </div>
 
-        <!-- Dynamic Options Form (Rotate, Watermark, etc.) -->
         <div id="options-container" class="glass card options-card hidden">
-          <!-- Populated by ts/app.ts -->
         </div>
 
-        <!-- Upload Zone -->
         <div id="upload-zone" class="upload-zone glass" tabindex="0" role="button" aria-label="Upload file">
           <input id="file-input" type="file" hidden />
           <div class="upload-icon">☁️</div>
@@ -81,10 +77,8 @@
           <p id="upload-accept-text" class="upload-accept-text">Accepted: .pdf</p>
         </div>
 
-        <!-- File Preview List -->
         <ul id="file-list" class="file-list hidden"></ul>
 
-        <!-- Actions -->
         <div class="workspace-actions">
           <button id="convert-btn" class="btn btn-primary" disabled>
             <span class="btn-text">Convert Now</span>
@@ -92,7 +86,6 @@
           </button>
         </div>
 
-        <!-- Progress Bar -->
         <div id="progress-container" class="progress-container hidden">
           <div class="progress-bar">
             <div id="progress-fill" class="progress-fill"></div>
@@ -100,7 +93,6 @@
           <p id="progress-text" class="progress-text">Processing...</p>
         </div>
 
-        <!-- Error Display -->
         <div id="error-container" class="error-card glass hidden">
           <span class="error-icon">⚠️</span>
           <p id="error-text" class="error-text"></p>
@@ -119,7 +111,6 @@
           <h2 class="result-title">Conversion Successful!</h2>
           
           <div id="result-stats" class="result-stats">
-            <!-- Populated dynamically -->
           </div>
 
           <a id="download-btn" href="#" download class="btn btn-primary btn-large">
@@ -135,7 +126,7 @@
 
   </div>
 
-  <!-- Vite injects the compiled TS here -->
-  <script type="module" src="./src/main.ts"></script>
+  <!-- TypeScript is in the ts folder -->
+  <script type="module" src="/ts/main.ts"></script>
 </body>
 </html>
