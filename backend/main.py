@@ -104,6 +104,17 @@ app.add_middleware(
 # Core Endpoints
 # ═══════════════════════════════════════════════════════════════════════════════
 
+@app.get("/", tags=["system"])
+async def root():
+    """Friendly root endpoint — prevents confusing 'Not Found' when visiting the backend URL directly."""
+    return {
+        "name": "ConvertX API",
+        "version": "1.0.0",
+        "status": "running",
+        "health": "/api/health",
+        "docs": "/api/docs" if DEBUG else "disabled (set ENVIRONMENT=development)",
+    }
+
 @app.get("/api/health", response_model=HealthResponse, tags=["system"])
 async def health():
     return HealthResponse(tesseract_available=TESSERACT_AVAILABLE, libreoffice_available=LIBREOFFICE_AVAILABLE)
