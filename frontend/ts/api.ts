@@ -35,9 +35,8 @@ async function fetchJson(
   options: Record<string, string | number>,
   onProgress: ProgressCallback
 ): Promise<ApiResponse> {
-  onProgress(10); // Simulate start
+  onProgress(10);
   
-  // Sanitize the payload to only include our defined options
   const payload: Record<string, string> = {};
   if (options['html']) payload.html = String(options['html']);
   if (options['css']) payload.css = String(options['css']);
@@ -72,21 +71,22 @@ function fetchMultipart(
     
     // Append Files based on tool requirements
     if (tool.id === 'edit-pdf') {
-      // Shape 3: Base file + images array + JSON operations
       formData.append('file', files[0]);
-      // Note: image files would be added here if frontend had image upload UI
-      // For now, we send an empty array if no extra images provided
-      formData.append('operations', JSON.stringify([])); 
+      if (files.length > 1) {
+        for (let i = 1; i < files.length; i++) {
+          formData.append('images', files[i]);
+        }
+      }
+      formData.append('operations', String(options['operations'] || '[]')); 
     } else if (tool.multiple) {
-      // Shape 2: Multiple files
       files.forEach(f => formData.append('files', f));
     } else {
-      // Shape 1: Single file
       formData.append('file', files[0]);
     }
 
-    // Append Options as Form fields
+    // Append Options as Form fields (skip internal keys)
     for (const [key, value] of Object.entries(options)) {
+      if (key === 'operations') continue; // Already appended above for edit-pdf
       if (value !== '' && value !== undefined) {
         formData.append(key, String(value));
       }
@@ -95,10 +95,9 @@ function fetchMultipart(
     const xhr = new XMLHttpRequest();
     xhr.open('POST', tool.endpoint, true);
 
-    // Real byte-level upload progress
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable) {
-        const percent = Math.round((event.loaded / event.total) * 80); // 80% for upload
+        const percent = Math.round((event.loaded / event.total) * 80);
         onProgress(percent);
       }
     };
@@ -109,22 +108,57 @@ function fetchMultipart(
         try {
           resolve(JSON.parse(xhr.responseText) as ApiResponse);
         } catch {
-          reject({ success: false, error: 'Invalid JSON response from server.', detail: xhr.responseText } as ErrorResponse);
+          reject({ success: false, error: 'Invalid JSON response from server.', detail: xhr.responseText.substring(0, 200) } as ErrorResponse);
         }
       } else {
+        // Try to parse as JSON (our error format)
         try {
-          reject(JSON.parse(xhr.responseText) as ErrorResponse);
+          const parsed = JSON.parse(xhr.responseText);
+          reject(parsed as ErrorResponse);
         } catch {
-          reject({ success: false, error: `Server error (${xhr.status})`, detail: xhr.statusText } as ErrorResponse);
+          // Non-JSON response (e.g., Vercel 404 HTML page, proxy error, etc.)
+          if (xhr.status === 404) {
+            reject({ 
+              success: false, 
+              error: 'API endpoint not found. The backend may not be configured correctly.', 
+              detail: 'Ensure BACKEND_URL is set in your Vercel environment variables.' 
+            } as ErrorResponse);
+          } else if (xhr.status === 0) {
+            reject({ 
+              success: false, 
+              error: 'Network error. The backend may be down or blocked by CORS.', 
+              detail: 'Check that the backend is running and ALLOWED_ORIGINS includes your frontend domain.' 
+            } as ErrorResponse);
+          } else {
+            reject({ 
+              success: false, 
+              error: `Server error (${xhr.status}).`, 
+              detail: xhr.statusText || 'Unknown error' 
+            } as ErrorResponse);
+          }
         }
       }
     };
 
     xhr.onerror = () => {
       onProgress(100);
-      reject({ success: false, error: 'Network error. Please check your connection.', detail: '' } as ErrorResponse);
+      reject({ 
+        success: false, 
+        error: 'Network error. The backend may be down or blocked by CORS.', 
+        detail: 'Check that the backend is running and ALLOWED_ORIGINS includes your frontend domain.' 
+      } as ErrorResponse);
     };
 
+    xhr.ontimeout = () => {
+      onProgress(100);
+      reject({ 
+        success: false, 
+        error: 'Request timed out. The file may be too large or the server is slow.', 
+        detail: '' 
+      } as ErrorResponse);
+    };
+
+    xhr.timeout = 300000; // 5 minute timeout for large files
     xhr.send(formData);
   });
 }
