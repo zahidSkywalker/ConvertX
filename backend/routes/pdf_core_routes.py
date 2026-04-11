@@ -1,5 +1,6 @@
 """
-PDF Core Routes — 8 endpoints for structural and visual PDF manipulations.
+PDF Core Routes — 9 endpoints for structural and visual PDF manipulations.
+FIX: Added missing repair-pdf endpoint. Removed duplicate _safe_delete.
 """
 
 import json
@@ -15,12 +16,14 @@ from backend.utils.file_utils import (
     save_upload_files,
     register_output_file,
     format_file_size,
+    _safe_delete,
 )
 from backend.utils.response_models import (
     ConversionResponse,
     CompressPdfResponse,
     SplitPdfResponse,
     PdfToImageResponse,
+    RepairPdfResponse,
 )
 from backend.converters import ConversionError
 from backend.converters.pdf_core import (
@@ -37,12 +40,6 @@ from backend.converters.pdf_core import (
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["pdf-core"])
-
-
-def _safe_delete(path: Path | None) -> None:
-    if path and path.exists():
-        try: path.unlink()
-        except Exception: pass
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -94,6 +91,7 @@ async def split_pdf_endpoint(
     file: UploadFile = File(..., description="PDF file to split"),
 ):
     upload_path = output_path = None
+    temp_dir = None
     try:
         upload_path, _ = await save_upload_file(file, allowed_types=TOOL_INPUT_TYPES["split-pdf"])
         temp_dir = OUTPUT_DIR / f"split_temp_{upload_path.stem}"
@@ -103,13 +101,7 @@ async def split_pdf_endpoint(
         dl_name = register_output_file(f"{upload_path.stem}_split_pages.zip", output_path)
         
         _safe_delete(upload_path)
-        # Clean temp dir if anything remains
-        try:
-            if temp_dir.exists(): 
-                for f in temp_dir.iterdir(): f.unlink(missing_ok=True)
-                temp_dir.rmdir()
-        except Exception: pass
-
+        
         return SplitPdfResponse(
             download_url=f"/api/download/{dl_name}",
             filename=f"{upload_path.stem}_split_pages.zip",
@@ -127,6 +119,13 @@ async def split_pdf_endpoint(
         logger.error("Split route error: %s", e, exc_info=True)
         _safe_delete(upload_path); _safe_delete(output_path)
         raise HTTPException(status_code=500, detail="Unexpected error during split.")
+    finally:
+        # Always clean up temp directory
+        if temp_dir and temp_dir.exists():
+            try:
+                for f in temp_dir.iterdir(): f.unlink(missing_ok=True)
+                temp_dir.rmdir()
+            except Exception: pass
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -331,7 +330,44 @@ async def organize_pages_endpoint(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 8. PDF to Image
+# 8. Repair PDF  ← WAS MISSING, NOW ADDED
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@router.post("/repair-pdf", response_model=RepairPdfResponse)
+async def repair_pdf_endpoint(
+    file: UploadFile = File(..., description="Corrupted PDF file to repair"),
+):
+    upload_path = output_path = None
+    try:
+        upload_path, _ = await save_upload_file(file, allowed_types=TOOL_INPUT_TYPES["repair-pdf"])
+        output_path = OUTPUT_DIR / f"{upload_path.stem}_repaired.pdf"
+        
+        output_path, stats = repair_pdf(upload_path, output_path)
+        
+        dl_name = register_output_file(f"{upload_path.stem}_repaired.pdf", output_path)
+        _safe_delete(upload_path)
+        
+        return RepairPdfResponse(
+            download_url=f"/api/download/{dl_name}",
+            filename=f"{upload_path.stem}_repaired.pdf",
+            size_bytes=output_path.stat().st_size,
+            size_human=format_file_size(output_path.stat().st_size),
+            pages_recovered=stats["pages_recovered"],
+        )
+    except ConversionError as e:
+        _safe_delete(upload_path); _safe_delete(output_path)
+        raise HTTPException(status_code=422, detail=e.message)
+    except HTTPException:
+        _safe_delete(upload_path); _safe_delete(output_path)
+        raise
+    except Exception as e:
+        logger.error("Repair route error: %s", e, exc_info=True)
+        _safe_delete(upload_path); _safe_delete(output_path)
+        raise HTTPException(status_code=500, detail="Unexpected error during repair.")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 9. PDF to Image
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @router.post("/pdf-to-image", response_model=PdfToImageResponse)
@@ -339,6 +375,7 @@ async def pdf_to_image_endpoint(
     file: UploadFile = File(...),
 ):
     upload_path = output_path = None
+    temp_dir = None
     try:
         upload_path, _ = await save_upload_file(file, allowed_types=TOOL_INPUT_TYPES["pdf-to-image"])
         temp_dir = OUTPUT_DIR / f"img_temp_{upload_path.stem}"
@@ -348,12 +385,7 @@ async def pdf_to_image_endpoint(
         dl_name = register_output_file(f"{upload_path.stem}_images.zip", output_path)
         
         _safe_delete(upload_path)
-        try:
-            if temp_dir.exists(): 
-                for f in temp_dir.iterdir(): f.unlink(missing_ok=True)
-                temp_dir.rmdir()
-        except Exception: pass
-
+        
         return PdfToImageResponse(
             download_url=f"/api/download/{dl_name}",
             filename=f"{upload_path.stem}_images.zip",
@@ -371,3 +403,9 @@ async def pdf_to_image_endpoint(
         logger.error("PDF to Image route error: %s", e, exc_info=True)
         _safe_delete(upload_path); _safe_delete(output_path)
         raise HTTPException(status_code=500, detail="Unexpected error rendering images.")
+    finally:
+        if temp_dir and temp_dir.exists():
+            try:
+                for f in temp_dir.iterdir(): f.unlink(missing_ok=True)
+                temp_dir.rmdir()
+            except Exception: pass
