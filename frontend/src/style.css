@@ -3,6 +3,11 @@
    Glassmorphism, Mobile-First, Dark/Light Themes
    ═══════════════════════════════════════════════════════════════════════════ */
 
+/* ─── 0. Utility Classes ─────────────────────────────────────────────────── */
+.hidden {
+  display: none !important;
+}
+
 /* ─── 1. CSS Variables & Themes ──────────────────────────────────────────── */
 :root {
   /* Typography */
@@ -317,6 +322,11 @@ input, select, textarea { font-family: inherit; font-size: 1rem; }
   color: var(--error-text);
   font-weight: bold;
   margin-left: var(--space-sm);
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  padding: 0 0.25rem;
 }
 
 /* ─── 11. Buttons ────────────────────────────────────────────────────────── */
@@ -408,7 +418,7 @@ input, select, textarea { font-family: inherit; font-size: 1rem; }
   background: var(--error-bg);
   border-color: var(--error-border);
 }
-.error-icon { font-size: 1.2rem; }
+.error-icon { font-size: 1.2rem; flex-shrink: 0; }
 .error-text { color: var(--error-text); font-size: 0.9rem; }
 
 /* ─── 14. Result View ────────────────────────────────────────────────────── */
@@ -482,7 +492,7 @@ input, select, textarea { font-family: inherit; font-size: 1rem; }
   .tool-card { padding: var(--space-sm); }
   .tool-icon { font-size: 1.5rem; }
   .tool-name { font-size: 0.95rem; }
-  .tool-desc { display: none; } /* Hide descriptions on small screens to save space */
+  .tool-desc { display: none; }
   
   .hero { padding: var(--space-lg) var(--space-sm); }
   .hero-subtitle { font-size: 1rem; }
