@@ -1,5 +1,6 @@
 """
 PDF to Office Routes — Extraction endpoints for Word, Excel, and PowerPoint.
+FIX: temp_img_path cleanup uses proper None initialization instead of dir() check.
 """
 
 import logging
