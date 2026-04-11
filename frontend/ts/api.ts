@@ -1,16 +1,14 @@
 /**
- * API Client — Constructs exact payloads expected by the FastAPI backend.
+ * API Client — Calls backend directly via VITE_BACKEND_URL env var.
  * 
- * Handles 4 distinct payload shapes:
- * 1. Single file + Form options (Rotate, Watermark, Compress, etc.)
- * 2. Multiple files (Merge PDF, Image to PDF)
- * 3. Single file + Multiple image files + JSON string (Edit PDF)
- * 4. Raw JSON body (HTML to PDF)
- * 
- * Uses XHR for multipart to provide real byte-level upload progress.
+ * Vite automatically exposes any env var prefixed with VITE_ at build time.
+ * No proxy needed — simpler, more reliable, easier to debug.
  */
 
 import { Tool, ApiResponse, ErrorResponse } from './types';
+
+// Runtime backend URL. Falls back to empty (for local dev with Vite proxy).
+const BACKEND_URL: string = import.meta.env.VITE_BACKEND_URL || '';
 
 type ProgressCallback = (percent: number) => void;
 
@@ -21,12 +19,10 @@ export async function convert(
   onProgress: ProgressCallback
 ): Promise<ApiResponse> {
   
-  // Shape 4: JSON Body (HTML to PDF)
   if (tool.isJsonBody) {
     return fetchJson(tool, options, onProgress);
   }
 
-  // Shapes 1, 2, 3: Multipart Form Data
   return fetchMultipart(tool, files, options, onProgress);
 }
 
@@ -42,7 +38,7 @@ async function fetchJson(
   if (options['css']) payload.css = String(options['css']);
 
   try {
-    const response = await fetch(tool.endpoint, {
+    const response = await fetch(`${BACKEND_URL}${tool.endpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -69,7 +65,6 @@ function fetchMultipart(
   return new Promise((resolve, reject) => {
     const formData = new FormData();
     
-    // Append Files based on tool requirements
     if (tool.id === 'edit-pdf') {
       formData.append('file', files[0]);
       if (files.length > 1) {
@@ -84,16 +79,15 @@ function fetchMultipart(
       formData.append('file', files[0]);
     }
 
-    // Append Options as Form fields (skip internal keys)
     for (const [key, value] of Object.entries(options)) {
-      if (key === 'operations') continue; // Already appended above for edit-pdf
+      if (key === 'operations') continue;
       if (value !== '' && value !== undefined) {
         formData.append(key, String(value));
       }
     }
 
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', tool.endpoint, true);
+    xhr.open('POST', `${BACKEND_URL}${tool.endpoint}`, true);
 
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable) {
@@ -111,28 +105,19 @@ function fetchMultipart(
           reject({ success: false, error: 'Invalid JSON response from server.', detail: xhr.responseText.substring(0, 200) } as ErrorResponse);
         }
       } else {
-        // Try to parse as JSON (our error format)
         try {
-          const parsed = JSON.parse(xhr.responseText);
-          reject(parsed as ErrorResponse);
+          reject(JSON.parse(xhr.responseText) as ErrorResponse);
         } catch {
-          // Non-JSON response (e.g., Vercel 404 HTML page, proxy error, etc.)
-          if (xhr.status === 404) {
+          if (xhr.status === 0) {
             reject({ 
               success: false, 
-              error: 'API endpoint not found. The backend may not be configured correctly.', 
-              detail: 'Ensure BACKEND_URL is set in your Vercel environment variables.' 
-            } as ErrorResponse);
-          } else if (xhr.status === 0) {
-            reject({ 
-              success: false, 
-              error: 'Network error. The backend may be down or blocked by CORS.', 
-              detail: 'Check that the backend is running and ALLOWED_ORIGINS includes your frontend domain.' 
+              error: 'Network error — could not reach the backend.', 
+              detail: 'Your backend might be sleeping (Render cold start) or the VITE_BACKEND_URL is wrong.' 
             } as ErrorResponse);
           } else {
             reject({ 
               success: false, 
-              error: `Server error (${xhr.status}).`, 
+              error: `Backend returned error ${xhr.status}.`, 
               detail: xhr.statusText || 'Unknown error' 
             } as ErrorResponse);
           }
@@ -144,8 +129,8 @@ function fetchMultipart(
       onProgress(100);
       reject({ 
         success: false, 
-        error: 'Network error. The backend may be down or blocked by CORS.', 
-        detail: 'Check that the backend is running and ALLOWED_ORIGINS includes your frontend domain.' 
+        error: 'Network error — could not reach the backend.', 
+        detail: 'Your backend might be sleeping (Render cold start takes ~30s). Try again in a moment, or check VITE_BACKEND_URL.' 
       } as ErrorResponse);
     };
 
@@ -153,12 +138,12 @@ function fetchMultipart(
       onProgress(100);
       reject({ 
         success: false, 
-        error: 'Request timed out. The file may be too large or the server is slow.', 
-        detail: '' 
+        error: 'Request timed out.', 
+        detail: 'The file may be too large or the backend is slow to respond.' 
       } as ErrorResponse);
     };
 
-    xhr.timeout = 300000; // 5 minute timeout for large files
+    xhr.timeout = 300000; // 5 minutes
     xhr.send(formData);
   });
 }
