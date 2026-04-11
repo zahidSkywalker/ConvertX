@@ -1,5 +1,9 @@
 /**
- * ConvertX Application Shell — Complete Production Version.
+ * ConvertX Application Shell — Production Version.
+ * 
+ * Fixed: resetWorkspaceUI now hides options container.
+ * Fixed: Error handling properly resets all UI state.
+ * Fixed: Select default value comparison uses String coercion.
  */
 import { TOOLS, CATEGORIES } from './tools';
 import { Tool, AppView, ToolCategory, ConversionResponse, ErrorResponse } from './types';
@@ -62,12 +66,17 @@ export class App {
     const acceptText = document.getElementById('upload-accept-text');
     if (acceptText) {
       acceptText.textContent = tool.isJsonBody 
-        ? 'No file upload required (see options below)' 
+        ? 'No file upload required — enter content in the options below' 
         : `Accepted: ${tool.accept.toUpperCase()}`;
     }
 
+    // Reset ALL workspace UI FIRST — this hides everything
+    this.resetWorkspaceUI();
+
+    // Then render tool-specific options (shows container only if options exist)
     this.renderToolOptions(tool);
 
+    // Setup upload zone
     this.cleanupUploadZone?.(); 
     const uploadZone = document.getElementById('upload-zone');
     if (uploadZone) {
@@ -85,7 +94,6 @@ export class App {
       });
     }
 
-    this.resetWorkspaceUI();
     this.showView('workspace');
   }
 
@@ -169,8 +177,8 @@ export class App {
 
     const statsContainer = document.getElementById('result-stats');
     if (statsContainer) {
-      let statsHtml = `<div class="stat-item"><strong>Filename:</strong> ${result.filename}</div>`;
-      statsHtml += `<div class="stat-item"><strong>Size:</strong> ${result.size_human}</div>`;
+      let statsHtml = `<div class="stat-item"><strong>Filename:</strong> ${this.escapeHtml(result.filename)}</div>`;
+      statsHtml += `<div class="stat-item"><strong>Size:</strong> ${this.escapeHtml(result.size_human)}</div>`;
 
       const res = result as unknown as Record<string, unknown>;
       
@@ -180,6 +188,7 @@ export class App {
       if ('rows_extracted' in res) statsHtml += `<div class="stat-item"><strong>Rows Extracted:</strong> ${res.rows_extracted}</div>`;
       if ('slide_count' in res) statsHtml += `<div class="stat-item"><strong>Slides:</strong> ${res.slide_count}</div>`;
       if ('words_detected' in res) statsHtml += `<div class="stat-item"><strong>Words Detected:</strong> ${res.words_detected}</div>`;
+      if ('pages_processed' in res) statsHtml += `<div class="stat-item"><strong>Pages Processed:</strong> ${res.pages_processed}</div>`;
       if ('pages_recovered' in res) statsHtml += `<div class="stat-item"><strong>Pages Recovered:</strong> ${res.pages_recovered}</div>`;
 
       statsContainer.innerHTML = statsHtml;
@@ -238,11 +247,16 @@ export class App {
     this.hideError();
     this.updateProgress(0);
     
+    // Hide ALL toggleable elements
     const pc = document.getElementById('progress-container');
     if (pc) pc.classList.add('hidden');
     
     const fl = document.getElementById('file-list');
     if (fl) fl.classList.add('hidden');
+
+    // FIX: Also hide options container — this was the watermark bleeding bug
+    const oc = document.getElementById('options-container');
+    if (oc) oc.classList.add('hidden');
 
     this.updateConvertButton();
   }
@@ -302,14 +316,15 @@ export class App {
     container.innerHTML = tool.options.map(opt => {
       if (opt.type === 'select') {
         const optsHtml = (opt.options || []).map(o => 
-          `<option value="${o.value}" ${o.value === opt.value ? 'selected' : ''}>${o.label}</option>`
+          // FIX: Use String() coercion so number values match correctly
+          `<option value="${o.value}" ${String(o.value) === String(opt.value) ? 'selected' : ''}>${o.label}</option>`
         ).join('');
         return `<div class="form-group"><label for="opt-${opt.id}">${opt.label}</label><select id="opt-${opt.id}" name="${opt.id}">${optsHtml}</select></div>`;
       }
       if (opt.type === 'textarea') {
         return `<div class="form-group"><label for="opt-${opt.id}">${opt.label}</label><textarea id="opt-${opt.id}" name="${opt.id}" rows="6">${opt.value}</textarea></div>`;
       }
-      return `<div class="form-group"><label for="opt-${opt.id}">${opt.label}</label><input type="${opt.type}" id="opt-${opt.id}" name="${opt.id}" value="${opt.value}" ${opt.required ? 'required' : ''} /></div>`;
+      return `<div class="form-group"><label for="opt-${opt.id}">${opt.label}</label><input type="${opt.type}" id="opt-${opt.id}" name="${opt.id}" value="${opt.value}" ${opt.required ? 'required' : ''} placeholder="${opt.placeholder || ''}" /></div>`;
     }).join('');
   }
 
@@ -322,5 +337,11 @@ export class App {
   private setText(id: string, text: string): void {
     const el = document.getElementById(id);
     if (el) el.textContent = text;
+  }
+
+  private escapeHtml(str: string): string {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
   }
 }
