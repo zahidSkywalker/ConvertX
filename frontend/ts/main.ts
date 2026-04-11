@@ -16,7 +16,6 @@ document.addEventListener('DOMContentLoaded', () => {
   if ('serviceWorker' in navigator && import.meta.env.PROD) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/service-worker.js').catch(() => {
-        // SW registration failed, likely due to ad-blockers or older browsers
         console.warn('SW registration failed.');
       });
     });
