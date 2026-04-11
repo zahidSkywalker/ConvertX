@@ -2,7 +2,7 @@
  * Application Entry Point.
  * Initializes Vite HMR in dev, registers Service Worker, and boots the App.
  */
-import './style.css';
+import '../src/style.css';
 import { App } from './app';
 import { initTheme } from './theme';
 
